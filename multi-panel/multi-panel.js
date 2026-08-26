@@ -2447,6 +2447,12 @@ function setupEventListeners() {
     broadcastMessage(input.value, true);
   });
 
+  // Compare button
+  const compareBtn = document.getElementById('compare-btn');
+  compareBtn.addEventListener('click', () => {
+    showToast('Compare button clicked');
+  });
+
   // Input textarea
   const inputTextarea = document.getElementById('unified-input');
   let isInputComposing = false;
