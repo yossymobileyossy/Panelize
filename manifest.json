@@ -9,6 +9,7 @@
     "contextMenus",
     "activeTab",
     "scripting",
+    "webNavigation",
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess"
   ],

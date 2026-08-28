@@ -483,7 +483,7 @@
       requestId,
       provider,
       phase,
-      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+      context: 'multi-panel-provider-status'
     }, '*');
   }
 
@@ -520,7 +520,7 @@
     window.parent.postMessage({
       type: PANELIZE_TEMP_CHAT_ENABLED,
       provider,
-      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+      context: 'multi-panel-provider-status'
     }, '*');
   }
 
@@ -533,7 +533,7 @@
       type: PANELIZE_PROVIDER_LOCATION,
       provider,
       url: window.location.href,
-      context: MULTI_PANEL_PROVIDER_STATUS_CONTEXT
+      context: 'multi-panel-provider-status'
     }, '*');
   }
 
@@ -2923,6 +2923,68 @@
       return;
     }
 
+    // Handle GET_LATEST_ANSWER messages
+    if (event.data.type === 'PANELIZE_GET_LATEST_ANSWER' &&
+        event.data.context === 'multi-panel') {
+
+      const provider = detectProvider();
+
+      console.log('[Compare] GET_LATEST_ANSWER request received in iframe:', {
+        provider,
+        href: window.location.href,
+        requestId: event.data.requestId
+      });
+
+      const postLatestAnswerResult = (payload = {}) => {
+        window.parent.postMessage({
+          type: 'PANELIZE_GET_LATEST_ANSWER',
+          context: 'multi-panel-provider-status',
+          provider: provider || 'unknown',
+          requestId: event.data.requestId,
+          ...payload
+        }, '*');
+      };
+
+      if (provider !== 'chatgpt') {
+        postLatestAnswerResult({
+          answer: '',
+          error: 'UNSUPPORTED_PROVIDER'
+        });
+        return;
+      }
+
+      const assistantMessages = document.querySelectorAll(
+        '[data-message-author-role="assistant"]'
+      );
+
+      console.log('[Compare] Assistant message count:', assistantMessages.length);
+
+      if (assistantMessages.length === 0) {
+        postLatestAnswerResult({
+          answer: '',
+          error: 'NO_ASSISTANT_MESSAGE'
+        });
+        return;
+      }
+
+      const latestAnswer =
+        assistantMessages[assistantMessages.length - 1].innerText?.trim() || '';
+
+      if (!latestAnswer) {
+        postLatestAnswerResult({
+          answer: '',
+          error: 'EMPTY_ANSWER'
+        });
+        return;
+      }
+
+      postLatestAnswerResult({
+        answer: latestAnswer
+      });
+
+      return;
+    }
+
     // Handle INJECT_TEXT_WITH_IMAGES messages
     if (event.data.type === 'INJECT_TEXT_WITH_IMAGES' && event.data.context === 'multi-panel') {
       const provider = detectProvider();
@@ -3093,3 +3155,4 @@
   setupProviderLocationReporting();
   window.addEventListener('message', handleTextInjection);
 })();
+

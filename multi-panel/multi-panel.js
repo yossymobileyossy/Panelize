@@ -143,6 +143,7 @@ const MULTI_PANEL_PROVIDER_STATUS_CONTEXT = 'multi-panel-provider-status';
 const PANELIZE_PROVIDER_BUSY = 'PANELIZE_PROVIDER_BUSY';
 const PANELIZE_PROVIDER_IDLE = 'PANELIZE_PROVIDER_IDLE';
 const PANELIZE_PROVIDER_USER_INTERACTION = 'PANELIZE_PROVIDER_USER_INTERACTION';
+const PANELIZE_GET_LATEST_ANSWER = 'PANELIZE_GET_LATEST_ANSWER';
 const PANELIZE_TEMP_CHAT_ENABLED = 'PANELIZE_TEMP_CHAT_ENABLED';
 const PANELIZE_PROVIDER_LOCATION = 'PANELIZE_PROVIDER_LOCATION';
 const TEMP_CHAT_RETRY_DELAYS = [1200, 2500, 4000];
@@ -809,14 +810,24 @@ function restoreUnifiedInputFocusAfterSend(trackedPanels = []) {
 }
 
 function handleProviderStatusMessage(event) {
+  console.log('[Compare DEBUG] parent received message raw:', event?.data, 'source:', event?.source);
+
   const data = event?.data;
   if (!data || typeof data !== 'object') {
     return;
   }
 
+  console.log('[Compare DEBUG] parent received message type/context:', data.type, data.context, data.provider);
+
+
   const isTempChatMessage = data.type === PANELIZE_TEMP_CHAT_ENABLED;
   const isLocationMessage = data.type === PANELIZE_PROVIDER_LOCATION;
-  if (data.context !== MULTI_PANEL_PROVIDER_STATUS_CONTEXT || (!data.requestId && !isTempChatMessage && !isLocationMessage)) {
+  const isLatestAnswerMessage = data.type === PANELIZE_GET_LATEST_ANSWER;
+
+  if (
+    data.context !== MULTI_PANEL_PROVIDER_STATUS_CONTEXT ||
+    (!data.requestId && !isTempChatMessage && !isLocationMessage && !isLatestAnswerMessage)
+  ) {
     return;
   }
 
@@ -824,6 +835,23 @@ function handleProviderStatusMessage(event) {
   if (!panel || data.provider !== panel.providerId) {
     return;
   }
+
+  if (isLatestAnswerMessage) {
+    console.log('[Compare] Latest answer received from provider:', data.provider);
+    console.log('[Compare] Latest answer:', data.answer);
+    console.log('[Compare] Latest answer error:', data.error);
+
+    if (data.error) {
+      showToast(`Compare failed: ${data.error}`);
+      return;
+    }
+
+    showToast('ChatGPT answer received');
+    return;
+  }
+
+
+
 
   switch (data.type) {
     case PANELIZE_PROVIDER_LOCATION:
@@ -860,6 +888,7 @@ function handleProviderStatusMessage(event) {
       break;
   }
 }
+
 
 async function getPendingMultiPanelAction() {
   try {
@@ -2449,9 +2478,37 @@ function setupEventListeners() {
 
   // Compare button
   const compareBtn = document.getElementById('compare-btn');
+
   compareBtn.addEventListener('click', () => {
     showToast('Compare button clicked');
+
+    const chatgptPanel = panels.find(panel =>
+      panel.providerId === 'chatgpt' &&
+      panel.iframe &&
+      panel.iframe.contentWindow
+    );
+
+    console.log('[Compare] ChatGPT panel found:', !!chatgptPanel);
+    console.log('[Compare] ChatGPT panel id:', chatgptPanel?.id);
+    console.log('[Compare] ChatGPT iframe src:', chatgptPanel?.iframe?.src);
+    console.log('[Compare] ChatGPT iframe contentWindow:', chatgptPanel?.iframe?.contentWindow);
+
+    if (!chatgptPanel) {
+      console.warn('[Compare] ChatGPT panel not found');
+      showToast('ChatGPT panel not found');
+      return;
+    }
+
+    console.log('[Compare] Sending latest answer request to ChatGPT panel');
+
+    chatgptPanel.iframe.contentWindow.postMessage({
+      type: PANELIZE_GET_LATEST_ANSWER,
+      context: 'multi-panel'
+    }, '*');
+
+    console.log('[Compare] postMessage sent to ChatGPT panel iframe');
   });
+
 
   // Input textarea
   const inputTextarea = document.getElementById('unified-input');
