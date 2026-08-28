@@ -838,8 +838,11 @@ function handleProviderStatusMessage(event) {
 
   if (isLatestAnswerMessage) {
     console.log('[Compare] Latest answer received from provider:', data.provider);
+    console.log('[Compare] Latest answer requestId:', data.requestId);
+    console.log('[Compare] Latest answer panel id:', panel.id);
     console.log('[Compare] Latest answer:', data.answer);
     console.log('[Compare] Latest answer error:', data.error);
+
 
     if (data.error) {
       showToast(`Compare failed: ${data.error}`);
@@ -2499,14 +2502,18 @@ function setupEventListeners() {
       return;
     }
 
-    console.log('[Compare] Sending latest answer request to ChatGPT panel');
+    const compareRequestId = `compare-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    console.log('[Compare] Sending latest answer request to ChatGPT panel:', compareRequestId);
 
     chatgptPanel.iframe.contentWindow.postMessage({
-      type: PANELIZE_GET_LATEST_ANSWER,
-      context: 'multi-panel'
+      type: 'PANELIZE_GET_LATEST_ANSWER',
+      context: 'multi-panel',
+      requestId: compareRequestId
     }, '*');
 
-    console.log('[Compare] postMessage sent to ChatGPT panel iframe');
+    console.log('[Compare] postMessage sent to ChatGPT panel iframe:', compareRequestId);
+
   });
 
 
@@ -2957,3 +2964,5 @@ async function deletePromptFromEditor() {
 
 // Initialize on load
 init();
+
+
